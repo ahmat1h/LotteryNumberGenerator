@@ -1,0 +1,113 @@
+
+---------------------------------------------------------------------------------------------------------------------------
+;first we initialise PORTA and PORTB 
+---------------------------------------------------------------------------------------------------------------------------
+
+;Inizialization PORTA and PORTB
+.equ DDRA =$1A							;Port A Data Direction Register Address
+.equ PORTA =$1B 						;Port A output
+.equ DDRB =$17							;Port B  Data Direction Register Address
+.equ PORTB =$18 						;Port B output
+
+--------------------------------------------------------------------------------------------------------------------------
+;Now we create the definitions for each register that we are going to use
+--------------------------------------------------------------------------------------------------------------------------
+
+;We called the registers in values: 
+;We explain the function of each values
+
+.def output = r17						;The value output of the PORTs,it outputs this value at r17
+.def initialisate = r18						;Contain the first number that we initialise in the function ldi initialise,$..
+.def check_number = r19						;Creating this value to contain the initialisate 
+.def bitmask = r20						;We use this o select the bits that we want for example the first 4 bits for the most significant digit or least significant bit
+.def bitcarry = r21						;Used to contain the result of the xor that the system does for the last 2 bits
+.def compare = r22						;value used to compare the check_number
+
+--------------------------------------------------------------------------------------------------------------------------
+;Now we initialise the value that we want to generate and do the xor
+--------------------------------------------------------------------------------------------------------------------------
+ldi initialisate,$40
+
+--------------------------------------------------------------------------------------------------------------------------
+;We create the main loop that is going to control the whole code
+--------------------------------------------------------------------------------------------------------------------------
+loop:
+
+
+mov check_number,initialisate					;move initialisate to check_number
+mov output,initialisate						;Copy the value check_num to output 
+ldi bitmask,$F0							;Set value mask to 11110000 so we take only the first four bits for the most significant digit
+and output,bitmask						;Selecting the first 4 bit with AND
+out PORTA,output						;Output the result of AND operations in port A
+ldi bitmask,$0F							;Set value mask to 00001111 so we take only the last four bits for the least significant bit
+mov output,initialisate						;Re-copy the value check_number to output
+and output, bitmask						;Selecting the least 4 bits with AND
+out PORTB, output						;Output the result of the 4 bits in port B
+rcall check							;Relative Jump
+--------------------------------------------------------------------------------------------------------------------------
+;we use this to check and compare with the digit that we give and this is part of the loop
+;by doing this if the last two digit are equal when we compare it will send it directly to the subroutine that matches 
+--------------------------------------------------------------------------------------------------------------------------
+check:
+ldi bitmask,$03							;The value 3 in binary is 00000011 so this is going to be the mask
+and check_number,bitmask					;Selecting the last 2 bit
+ldi compare,$02							;The value 2 in binary is 00000010 so we use this to compare 
+cp check_number,compare						;The cp instruction allows us to compare two registers so we use this to compare if the cp number is the same 
+breq bit10							;If equal go to equal subroutine or subprograme bit10
+
+ldi compare,$01							;Value= 00000001
+cp check_number,compare						;Compare if the bits are equal
+breq bit01							;If equal go to subroutine bit01
+
+ldi compare,$00							;Value= 00000000
+cp check_number,compare						;Compare if the bits are equal
+breq bit00							;If equal go to subroutine bit00
+
+ldi compare,$03							;Value= 00000011
+cp check_number,compare						;Compare if the bits are equal
+breq bit11							;If equal go to subroutine bit11
+
+--------------------------------------------------------------------------------------------------------------------------
+;Now we create the sub-routines that are going to be needed to do the xor
+--------------------------------------------------------------------------------------------------------------------------
+
+;If last 2 bits=10
+
+bit10:
+ ldi bitcarry,$01						;Set bit carry to 1
+ lsr bitcarry							;Shift right bitcarry 1
+ ror initialisate						;Shift bits by 1 and insert bitcarry in initialisate
+ rjmp loop							;return to the loop to continue	for the other value that we receive in there
+
+
+;01
+
+bit01: 
+ ldi bitcarry,$01						;Set bit carry to 1
+ lsr bitcarry							;Shift right bitcarry 1
+ ror initialisate						;Shift bits by 1 and insert bitcarry in initialisate
+ rjmp loop							;return to the loop to continue	for the other value that we receive in there
+
+
+;00
+
+bit00: 
+ ldi bitcarry,$00						;Set bit carry to 0
+ lsr bitcarry							;Shift right bitcarry 0
+ ror initialisate						;Shift bits by 1 and insert bitcarry in initialisate
+ rjmp loop							;return to the loop to continue	for the other value that we receive in there
+
+
+;11
+
+bit11:
+ ldi bitcarry,$00						;Set bit carry to 0
+ lsr bitcarry							;Shift right bitcarry 1
+ ror initialisate						;Shift bits by 1 and insert bitcarry in initialisate
+ rjmp loop							;return to the loop to continue	for the other value that we receive in there
+
+
+
+
+
+
